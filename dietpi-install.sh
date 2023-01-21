@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Variables
-IMAGE_URL=$(whiptail --inputbox "Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7>
+IMAGE_URL=$(whiptail --inputbox "Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z
 RAM=1024
 CORES=2
 
