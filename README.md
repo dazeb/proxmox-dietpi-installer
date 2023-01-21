@@ -17,6 +17,6 @@ chmod +x dietpi-install.sh
 ./dietpi-install.sh`
 ```
 
-The installer will ask where to import the VM disk.
+The installer will ask where to import the VM disk. The rest is automatic.
 
 ## This is VERY basic, i'm sure there is better ways of doing it but this works fine. Tested and confirmed working with Proxmox 7.3
