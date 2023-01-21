@@ -1,3 +1,6 @@
+
+![proxmox-dietpi](https://user-images.githubusercontent.com/67932890/213890139-61bd9c23-4ed2-49f2-a627-0b303d0a4f8f.png)
+
 # Proxmox DietPi Installer
 
 A Proxmox Helper Script to install DietPi in Proxmox.
