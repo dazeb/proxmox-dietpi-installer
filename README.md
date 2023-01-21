@@ -11,7 +11,11 @@ Download the script to your Proxmox host by cloning the repo
 `git clone https://github.com/dazeb/proxmox-dietpi-installer.git`
 
 ## Run the script
-`./dietpi-install.sh`
+```
+cd proxmox-dietpi-installer
+chmod +x dietpi-install.sh
+./dietpi-install.sh`
+```
 
 The installer will ask where to import the VM disk.
 
