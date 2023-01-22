@@ -17,6 +17,9 @@ chmod +x dietpi-install.sh
 ./dietpi-install.sh`
 ```
 
-The installer will ask where to import the VM disk. The rest is automatic.
+The installer will ask where to import the VM disk, How much RAM to allocate and the number of processor cores. The rest is automatic.
+Default values are 1GB RAM and 2 Cores.
 
 ## This is VERY basic, i'm sure there is better ways of doing it but this works fine. Tested and confirmed working with Proxmox 7.3
+
+For more helper scripts like this but much better check out [tteck's Proxmox Heler Scripts](https://tteck.github.io/Proxmox/)
