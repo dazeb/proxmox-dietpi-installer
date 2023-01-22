@@ -8,6 +8,7 @@ A Proxmox Helper Script to install DietPi in Proxmox.
 ## How to use
 
 Download the script to your Proxmox host by cloning the repo
+
 `git clone https://github.com/dazeb/proxmox-dietpi-installer.git`
 
 ## Run the script
