@@ -28,7 +28,9 @@ qm set $ID --net0 "virtio,bridge=vmbr0"
 qm set $ID --scsi0 "$STORAGE:vm-$ID-disk-0"
 qm set $ID --boot order='scsi0'
 qm set $ID --scsihw virtio-scsi-pci
-# Create the virtual machine
+
+# Tell user the virtual machine is created
+echo "VM $ID Created."
 
 # Start the virtual machine
-echo "VM $ID Created."
+qm start $ID
