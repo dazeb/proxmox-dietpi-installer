@@ -11,7 +11,7 @@ A Proxmox Helper Script to install DietPi in Proxmox.
 
 `git clone https://github.com/dazeb/proxmox-dietpi-installer.git`
 
-## Run the script
+cd into the folder, make the file executable then run the script
 ```
 cd proxmox-dietpi-installer
 chmod +x dietpi-install.sh
