@@ -2,8 +2,8 @@
 
 # Variables
 IMAGE_URL=$(whiptail --inputbox "Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z):" 8 78 https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z --title "DietPi Installation" 3>&1 1>&2 2>&3)
-RAM=$(whiptail --inputbox "Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):" 8 78 --title "DietPi Installation" 3>&1 1>&2 2>&3)
-CORES=$(whiptail --inputbox "Enter the number of cores for the new virtual machine (default: 2):" 8 78 --title "DietPi Installation" 3>&1 1>&2 2>&3)
+RAM=$(whiptail --inputbox "Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):" 8 78 2048 --title "DietPi Installation" 3>&1 1>&2 2>&3)
+CORES=$(whiptail --inputbox "Enter the number of cores for the new virtual machine (default: 2):" 8 78 2 --title "DietPi Installation" 3>&1 1>&2 2>&3)
 
 # Get the next available VMID
 ID=$(pvesh get /cluster/nextid)
