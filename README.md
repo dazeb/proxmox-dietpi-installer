@@ -7,7 +7,7 @@ A Proxmox Helper Script to install DietPi in Proxmox.
 
 ## How to use
 
-Download the script to your Proxmox host by cloning the repo
+### Download the script to your Proxmox host by cloning the repo or using `wget`
 
 `git clone https://github.com/dazeb/proxmox-dietpi-installer.git`
 
@@ -16,6 +16,14 @@ Download the script to your Proxmox host by cloning the repo
 cd proxmox-dietpi-installer
 chmod +x dietpi-install.sh
 ./dietpi-install.sh`
+```
+### You can also download the script with `wget`
+```
+wget https://raw.githubusercontent.com/dazeb/proxmox-dietpi-installer/main/dietpi-install.sh
+```
+Run the script
+```
+./dietpi-install.sh
 ```
 
 The installer will ask where to import the VM disk, How much RAM to allocate and the number of processor cores. The rest is automatic.
