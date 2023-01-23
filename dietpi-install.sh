@@ -24,6 +24,8 @@ sleep 3
 qm importdisk $ID DietPi_Proxmox-x86_64-Bullseye.qcow2 $STORAGE
 
 # set vm storage
+qm set $ID --cores "$CORES"
+qm set $ID --memory "$RAM"
 qm set $ID --net0 "virtio,bridge=vmbr0"
 qm set $ID --scsi0 "$STORAGE:vm-$ID-disk-0"
 qm set $ID --boot order='scsi0'
