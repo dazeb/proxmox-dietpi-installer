@@ -27,7 +27,7 @@ Run the script
 ```
 
 The installer will ask where to import the VM disk, How much RAM to allocate and the number of processor cores. The rest is automatic.
-Default values are 1GB RAM and 2 Cores.
+Default values are 2GB RAM and 2 Cores.
 
 ## This is VERY basic, i'm sure there is better ways of doing it but this works fine. Tested and confirmed working with Proxmox 7.3
 
