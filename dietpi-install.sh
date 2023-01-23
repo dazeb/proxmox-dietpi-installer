@@ -23,7 +23,7 @@ sleep 3
 # import the qcow2 file to the default virtual machine storage
 qm importdisk $ID DietPi_Proxmox-x86_64-Bullseye.qcow2 $STORAGE
 
-# set vm storage
+# Set vm settings
 qm set $ID --cores "$CORES"
 qm set $ID --memory "$RAM"
 qm set $ID --net0 "virtio,bridge=vmbr0"
