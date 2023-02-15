@@ -23,7 +23,7 @@ chmod +x dietpi-install.sh
 ```sh
 wget https://raw.githubusercontent.com/dazeb/proxmox-dietpi-installer/main/dietpi-install.sh
 ```
-Make the file executable then run the script
+Make the file executable then run the script.
 ```sh
 chmod +x dietpi-install.sh
 ./dietpi-install.sh
@@ -32,6 +32,6 @@ chmod +x dietpi-install.sh
 The installer will ask where to import the VM disk, How much RAM to allocate and the number of processor cores. The rest is automatic.
 Default values are 2GB RAM and 2 Cores.
 
-## This is VERY basic, i'm sure there is better ways of doing it but this works fine. Tested and confirmed working with Proxmox 7.3
+#### I'm sure there is better ways of doing it but this works fine. Tested and confirmed working with Proxmox 7.3
 
-For more helper scripts like this but much better check out [tteck's Proxmox Heler Scripts](https://tteck.github.io/Proxmox/)
+### For more helper scripts like this but much better check out [tteck's Proxmox Heler Scripts](https://tteck.github.io/Proxmox/)
