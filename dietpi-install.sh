@@ -19,11 +19,11 @@ wget "$IMAGE_URL"
 # Extract the image
 IMAGE_NAME=${IMAGE_URL##*/}
 IMAGE_NAME=${IMAGE_NAME%.7z}
-7zr e DietPi_Proxmox-x86_64-Bullseye.7z
+7zr e "$IMAGE_NAME.7z" "$IMAGE_NAME.qcow2"
 sleep 3
 
 # import the qcow2 file to the default virtual machine storage
-qm importdisk "$ID" DietPi_Proxmox-x86_64-Bullseye.qcow2 "$STORAGE"
+qm importdisk "$ID" "$IMAGE_NAME.qcow2" "$STORAGE"
 
 # Set vm settings
 qm set "$ID" --cores "$CORES"
