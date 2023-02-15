@@ -33,7 +33,9 @@ qm set "$ID" --scsi0 "$STORAGE:vm-$ID-disk-0"
 qm set "$ID" --boot order='scsi0'
 qm set "$ID" --scsihw virtio-scsi-pci
 qm set "$ID" --name "dietpi" >/dev/null
-qm set "$ID" --description "### [DietPi](https://dietpi.com)" >/dev/null
+qm set "$ID" --description "### [DietPi](https://dietpi.com)
+### [DietPi Forums](https://dietpi.com/forum)
+### [DietPi Software](https://dietpi.com/docs/software/)" >/dev/null
 
 # Tell user the virtual machine is created
 echo "VM $ID Created."
