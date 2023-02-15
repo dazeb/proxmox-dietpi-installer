@@ -36,8 +36,8 @@ qm set "$ID" --scsihw virtio-scsi-pci
 # Tell user the virtual machine is created
 echo "VM $ID Created."
 # Set VM name
-qm set $VMID -name "dietpi" >/dev/null
+qm set $ID -name "dietpi" >/dev/null
 # Set VM description note
-qm set $VMID -description "[![DietPi](https://dietpi.com)" >/dev/null
+qm set $ID -description "[![DietPi](https://dietpi.com)" >/dev/null
 # Start the virtual machine
 qm start "$ID"
