@@ -9,6 +9,7 @@ VMNAME='DietPi'
 storageList=$(pvesm status)
 # Get the next available VMID
 ID=$(pvesh get /cluster/nextid)
+UUID=$(cat /proc/sys/kernel/random/uuid)
 
 # Initialize an empty array for the list of storage options
 storageListArray=()
@@ -103,6 +104,7 @@ qm set "$ID" --scsihw virtio-scsi-single
 qm set "$ID" --machine q35
 qm set "$ID" --ostype l26
 qm set "$ID" --name "$VMNAME"
+qm set "$ID" --smbios1 uuid="$UUID"
 
 # Tell user the virtual machine is created
 echo "VM $ID Created."
