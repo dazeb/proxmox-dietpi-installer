@@ -5,6 +5,9 @@ IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image (default: ht
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
+# Install p7zip if missing
+dpkg-query -s p7zip &> /dev/null || { echo 'Installing p7zip for DietPi archive extraction'; apt-get update; apt-get -y install p7zip; }
+
 # Get the next available VMID
 ID=$(pvesh get /cluster/nextid)
 
@@ -32,6 +35,11 @@ qm set "$ID" --net0 'virtio,bridge=vmbr0'
 qm set "$ID" --scsi0 "$STORAGE:vm-$ID-disk-0"
 qm set "$ID" --boot order='scsi0'
 qm set "$ID" --scsihw virtio-scsi-pci
+qm set "$ID" --name 'dietpi' >/dev/null
+qm set "$ID" --description '### [DietPi Website](https://dietpi.com/)
+### [DietPi Docs](https://dietpi.com/docs/)
+### [DietPi Forum](https://dietpi.com/forum/)
+### [DietPi Blog](https://dietpi.com/blog/)' >/dev/null
 
 # Tell user the virtual machine is created
 echo "VM $ID Created."
