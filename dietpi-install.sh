@@ -35,10 +35,11 @@ qm set "$ID" --net0 'virtio,bridge=vmbr0'
 qm set "$ID" --scsi0 "$STORAGE:vm-$ID-disk-0"
 qm set "$ID" --boot order='scsi0'
 qm set "$ID" --scsihw virtio-scsi-pci
-qm set "$ID" --name "dietpi" >/dev/null
-qm set "$ID" --description "### [DietPi](https://dietpi.com)
-### [DietPi Forums](https://dietpi.com/forum)
-### [DietPi Software](https://dietpi.com/docs/software/)" >/dev/null
+qm set "$ID" --name 'dietpi' >/dev/null
+qm set "$ID" --description '### [DietPi Website](https://dietpi.com/)
+### [DietPi Docs](https://dietpi.com/docs/)
+### [DietPi Forum](https://dietpi.com/forum/)
+### [DietPi Blog](https://dietpi.com/blog/)' >/dev/null
 
 # Tell user the virtual machine is created
 echo "VM $ID Created."
