@@ -17,7 +17,7 @@ touch "/etc/pve/qemu-server/$ID.conf"
 STORAGE=$(whiptail --inputbox 'Enter the storage name where the image should be imported:' 8 78 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
 # Ask if user wants to use BTRFS 
-read -p "Use BTRFS storage? (y/n) " use_btrfs
+read -p "Is it a BTRFS storage? (y/N) " use_btrfs
 
 if [ "$use_btrfs" = "y" ]; then
   qm_disk_param="$STORAGE:$ID/vm-$ID-disk-0.raw"
