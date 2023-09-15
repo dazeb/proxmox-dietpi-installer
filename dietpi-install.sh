@@ -16,6 +16,15 @@ touch "/etc/pve/qemu-server/$ID.conf"
 # Get the storage name from the user
 STORAGE=$(whiptail --inputbox 'Enter the storage name where the image should be imported:' 8 78 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
+# Ask if user wants to use BTRFS 
+read -p "Is it a BTRFS storage? (y/N) " use_btrfs
+
+if [ "$use_btrfs" = "y" ]; then
+  qm_disk_param="$STORAGE:$ID/vm-$ID-disk-0.raw"
+else
+  qm_disk_param="$STORAGE:vm-$ID-disk-0"  
+fi
+
 # Download DietPi image
 wget "$IMAGE_URL"
 
@@ -32,16 +41,16 @@ qm importdisk "$ID" "$IMAGE_NAME.qcow2" "$STORAGE"
 qm set "$ID" --cores "$CORES"
 qm set "$ID" --memory "$RAM"
 qm set "$ID" --net0 'virtio,bridge=vmbr0'
-qm set "$ID" --scsi0 "$STORAGE:vm-$ID-disk-0"
+qm set "$ID" --scsi0 "$qm_disk_param"
 qm set "$ID" --boot order='scsi0'
 qm set "$ID" --scsihw virtio-scsi-pci
 qm set "$ID" --name 'dietpi' >/dev/null
 qm set "$ID" --description '### [DietPi Website](https://dietpi.com/)
-### [DietPi Docs](https://dietpi.com/docs/)
+### [DietPi Docs](https://dietpi.com/docs/)  
 ### [DietPi Forum](https://dietpi.com/forum/)
 ### [DietPi Blog](https://dietpi.com/blog/)' >/dev/null
 
-# Tell user the virtual machine is created
+# Tell user the virtual machine is created  
 echo "VM $ID Created."
 
 # Start the virtual machine
