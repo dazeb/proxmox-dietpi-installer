@@ -13,33 +13,38 @@ ID=$(pvesh get /cluster/nextid)
 
 touch "/etc/pve/qemu-server/$ID.conf"
 
-# Variables for whiptail dialog
-declare -a STORAGE_MENU=()
+# get all active storage names into an array
+storage_Names=($(pvesm status | grep active | tr -s ' ' | cut -d ' ' -f1))
 
-# Read disk stats line by line  
-DISK_STATS=$(pvesm status -content images)
-# Create a temporary file to store the disk stats
-DISK_STATS_FILE=$(mktemp)
-echo "$DISK_STATS" > "$DISK_STATS_FILE"
+# get all active storage types into another array
+storage_Types=($(pvesm status | grep active | tr -s ' ' | cut -d ' ' -f2))
 
-# Validate and select storage
-MSG_MAX_LENGTH=0
+# lets find how many names are in our array 
+storage_Count=${#storage_Names[@]}
 
-# Read storage info and format it
-while read -r line; do
-  TAG=$(echo $line | awk '{print $1}')
-  TYPE=$(echo $line | awk '{print $2}')
-  FREE=$(echo $line | numfmt --field 4-6 --from-unit=K --to=iec --format "%.2f")
-  #FREE="Free: $(printf "%9sB" "$FREE")"
-  ITEM="  Type: $TYPE  $FREE"
-  STORAGE_MENU+=("$TAG" "$ITEM" "OFF") 
-done < <(pvesm status -content images | grep -P '^\w')
+# create a new arry for use with whiptail 
+storage_Array=()
+I=1
+for STORAGE in "${storage_Names[@]}"; do
+  storage_Array+=("$I" ":: $STORAGE " "off")
+  I=$(( I + 1 ))
+done
 
-# Display menu with formatted storage information and increased width
-STORAGE=$(whiptail --backtitle "Proxmox DietPi VM Installer" --title "Storage Pools" --radiolist \
-  "Which storage pool would you like to use for the new virtual machine?\nTo make a selection, use the Spacebar.\n\n$DISK_STATS" \
-  20 100 6 \
-  "${STORAGE_MENU[@]}" 3>&1 1>&2 2>&3) || exit
+# lets select a storage name
+choice=""
+while [ "$choice" == "" ]
+do
+  choice=$(whiptail --title "DietPi Installation" --radiolist "Select Storage Pool" 20 50 $storage_Count "${storage_Array[@]}" 3>&1 1>&2 2>&3 )
+done
+
+# get name of choosen storage
+Name=${storage_Names[$choice]}
+echo 'Name: ' $Name
+
+# get type of choosen storage
+Type=${storage_Types[$choice]}
+echo 'Typ: ' $Type
+
 
 # Get the type of the selected storage
 STORAGE_TYPE=$(pvesm status | grep "^$STORAGE " | awk '{print $2}')
