@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Variables
-IMAGE_URL=$(whiptail --backtitle "DietPi Proxmox Installer" --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
-RAM=$(whiptail --backtitle "DietPi Proxmox Installer" --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
-CORES=$(whiptail --backtitle "DietPi Proxmox Installer" --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+IMAGE_URL=$(whiptail --backtitle "Proxmox DietPi VM Installer" --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+RAM=$(whiptail --backtitle "Proxmox DietPi VM Installer" --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+CORES=$(whiptail --backtitle "Proxmox DietPi VM Installer" --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
 # Install p7zip if missing
 dpkg-query -s p7zip &> /dev/null || { echo 'Installing p7zip for DietPi archive extraction'; apt-get update; apt-get -y install p7zip; }
@@ -36,7 +36,7 @@ while read -r line; do
 done < <(pvesm status -content images | grep -P '^\w')
 
 # Display menu with formatted storage information and increased width
-STORAGE=$(whiptail --backtitle "DietPi Proxmox Installer" --title "Storage Pools" --radiolist \
+STORAGE=$(whiptail --backtitle "Proxmox DietPi VM Installer" --title "Storage Pools" --radiolist \
   "Which storage pool would you like to use for the new virtual machine?\nTo make a selection, use the Spacebar.\n\n$DISK_STATS" \
   20 100 6 \
   "${STORAGE_MENU[@]}" 3>&1 1>&2 2>&3) || exit
