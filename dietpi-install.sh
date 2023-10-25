@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Variables
-IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bullseye.7z' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
-# Install p7zip if missing
-dpkg-query -s p7zip &> /dev/null || { echo 'Installing p7zip for DietPi archive extraction'; apt-get update; apt-get -y install p7zip; }
+# Install xz-utils if missing
+dpkg-query -s xz-utils &> /dev/null || { echo 'Installing xz-utils for DietPi image decompression'; apt-get update; apt-get -y install xz-utils; }
 
 # Get the next available VMID
 ID=$(pvesh get /cluster/nextid)
@@ -32,14 +32,14 @@ fi
 # Download DietPi image
 wget "$IMAGE_URL"
 
-# Extract the image
+# Decompress the image
 IMAGE_NAME=${IMAGE_URL##*/}
-IMAGE_NAME=${IMAGE_NAME%.7z}
-7zr e "$IMAGE_NAME.7z" "$IMAGE_NAME.qcow2"
+xz -d "$IMAGE_NAME"
+IMAGE_NAME=${IMAGE_NAME%.xz}
 sleep 3
 
 # import the qcow2 file to the default virtual machine storage
-qm importdisk "$ID" "$IMAGE_NAME.qcow2" "$STORAGE"
+qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"
 
 # Set vm settings
 qm set "$ID" --cores "$CORES"
