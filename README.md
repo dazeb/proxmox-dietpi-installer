@@ -3,7 +3,7 @@
 
 # Proxmox DietPi Installer
 
-A Proxmox Helper Script to install DietPi in Proxmox 7 & 8.
+A Proxmox Helper Script to install DietPi in Proxmox 8.
 
 ## How to use
 
