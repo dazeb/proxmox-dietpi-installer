@@ -29,15 +29,14 @@ sleep 3
 echo "Importing disk image to storage..."
 qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"
 
-# Check if the disk was imported correctly
-if ! qm config "$ID" | grep -q "unused0"; then
+# Retrieve the disk path for further usage and print for user
+DISK_PATH=$(qm config "$ID" | awk '/unused0/{print $2;exit}')
+if [[ $DISK_PATH ]]; then
+    echo "Disk path: $DISK_PATH"
+else
     echo "Error: Failed to import disk for VM $ID"
     exit 1
 fi
-
-# Retrieve the disk path and print for user
-DISK_PATH=$(qm config "$ID" | grep "unused0" | awk '{print $2}')
-echo "Disk path: $DISK_PATH"
 
 # Set VM settings
 qm set "$ID" --cores "$CORES"
