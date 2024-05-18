@@ -16,19 +16,6 @@ touch "/etc/pve/qemu-server/$ID.conf"
 # Get the storage name from the user
 STORAGE=$(whiptail --inputbox 'Enter the storage name where the image should be imported:' 8 78 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
-# Ask if user what filesystem they are installing the VM on. BTRFS, ZFS, Directory OR LVM-Thin Provisioning.
-if (whiptail --title "What filesystem are you installing the VM on?" --yesno $"If using BTRFS, ZFS or Directory storage? Select YES \n                       \nIf using LVM-Thin Provisioning? Select NO" 10 78); then
-    use_btrfs="y"
-else
-    use_btrfs="n"
-fi
-
-if [ "$use_btrfs" = "y" ]; then
-  qm_disk_param="$STORAGE:$ID/vm-$ID-disk-0.raw"
-else
-  qm_disk_param="$STORAGE:vm-$ID-disk-0"  
-fi
-
 # Download DietPi image
 wget "$IMAGE_URL"
 
@@ -38,16 +25,35 @@ xz -d "$IMAGE_NAME"
 IMAGE_NAME=${IMAGE_NAME%.xz}
 sleep 3
 
-# import the qcow2 file to the default virtual machine storage
+# Import the qcow2 file to the specified storage
+echo "Importing disk image to storage..."
 qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"
 
-# Set vm settings
+# Check if the disk was imported correctly
+if ! qm config "$ID" | grep -q "unused0"; then
+    echo "Error: Failed to import disk for VM $ID"
+    exit 1
+fi
+
+# Retrieve the disk path and print for user
+DISK_PATH=$(qm config "$ID" | grep "unused0" | awk '{print $2}')
+echo "Disk path: $DISK_PATH"
+
+# Set VM settings
 qm set "$ID" --cores "$CORES"
 qm set "$ID" --memory "$RAM"
-qm set "$ID" --net0 'virtio,bridge=vmbr0'
-qm set "$ID" --scsi0 "$qm_disk_param"
-qm set "$ID" --boot order='scsi0'
 qm set "$ID" --scsihw virtio-scsi-pci
+qm set "$ID" --net0 'virtio,bridge=vmbr0'
+qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1"
+
+# Verify if the disk was set correctly
+if qm config "$ID" | grep -q "scsi0"; then
+    qm set "$ID" --boot order='scsi0'
+else
+    echo "Error: Failed to set the disk for VM $ID"
+    exit 1
+fi
+
 qm set "$ID" --name 'dietpi' >/dev/null
 qm set "$ID" --description '### [DietPi Website](https://dietpi.com/)
 ### [DietPi Docs](https://dietpi.com/docs/)  
