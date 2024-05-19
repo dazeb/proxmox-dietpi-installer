@@ -54,10 +54,24 @@ else
 fi
 
 qm set "$ID" --name 'dietpi' >/dev/null
-qm set "$ID" --description '### [DietPi Website](https://dietpi.com/)
-### [DietPi Docs](https://dietpi.com/docs/)  
-### [DietPi Forum](https://dietpi.com/forum/)
-### [DietPi Blog](https://dietpi.com/blog/)' >/dev/null
+
+# Description with logo and horizontal links
+DESCRIPTION='
+<p align="center">
+  <img src="https://dietpi.com/images/dietpi-logo_128x128.png" alt="DietPi Logo" width="40">
+  <br>
+  <strong>DietPi VM</strong>
+  <br>
+  <a href="https://dietpi.com/">Website</a> &bull; 
+  <a href="https://dietpi.com/docs/">Documentation</a> &bull; 
+  <a href="https://dietpi.com/forum/">Forum</a>
+  <br>
+  <a href="https://dietpi.com/blog/">Blog</a> &bull; 
+  <a href="https://github.com/MichaIng/DietPi">GitHub</a>
+</p>
+'
+
+qm set "$ID" --description "$DESCRIPTION" >/dev/null
 
 # Tell user the virtual machine is created  
 echo "VM $ID Created."
