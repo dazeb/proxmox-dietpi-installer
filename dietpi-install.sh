@@ -58,15 +58,16 @@ qm set "$ID" --name 'dietpi' >/dev/null
 # Description with logo and horizontal links
 DESCRIPTION='
 <p align="center">
-  <img src="https://i.ibb.co/rH7GPX5/dietpi.png" alt="DietPi Logo" width="40" />
-  <br/>
+  <img src="https://dietpi.com/images/dietpi-logo_128x128.png" alt="DietPi Logo" width="40">
+  <br>
   <strong>DietPi VM</strong>
-  <br/>
-  <a href="https://dietpi.com/">DietPi Website</a> &bull; 
-  <a href="https://dietpi.com/docs/">DietPi Docs</a> &bull; 
-  <a href="https://dietpi.com/forum/">DietPi Forum</a>
-  <br/>
-  <a href="https://dietpi.com/blog/">DietPi Blog</a>
+  <br>
+  <a href="https://dietpi.com/">Website</a> &bull; 
+  <a href="https://dietpi.com/docs/">Documentation</a> &bull; 
+  <a href="https://dietpi.com/forum/">Forum</a>
+  <br>
+  <a href="https://dietpi.com/blog/">Blog</a> &bull; 
+  <a href="https://github.com/MichaIng/DietPi">GitHub</a>
 </p>
 '
 
