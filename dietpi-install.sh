@@ -44,6 +44,7 @@ qm set "$ID" --memory "$RAM"
 qm set "$ID" --scsihw virtio-scsi-pci
 qm set "$ID" --net0 'virtio,bridge=vmbr0'
 qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1"
+qm set "$ID" --ostype l26
 
 # Verify if the disk was set correctly
 if qm config "$ID" | grep -q "scsi0"; then
