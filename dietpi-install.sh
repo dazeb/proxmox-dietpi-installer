@@ -1,9 +1,40 @@
 #!/bin/bash
 
+# Cleanup function
+cleanup() {
+    echo "Cleaning up..."
+    # Remove any downloaded files
+    rm -f DietPi_*
+    # Remove any temporary files
+    rm -f /tmp/dietpi_*
+    echo "Cleanup complete. Exiting."
+    exit 1
+}
+
+# Trap Ctrl+C and other interrupts
+trap cleanup INT TERM
+
 # Variables
 IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+
+# Check if user cancelled
+if [ $? -ne 0 ]; then
+    cleanup
+fi
+
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+
+# Check if user cancelled
+if [ $? -ne 0 ]; then
+    cleanup
+fi
+
 CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+
+# Check if user cancelled
+if [ $? -ne 0 ]; then
+    cleanup
+fi
 
 # Install xz-utils if missing
 dpkg-query -s xz-utils &> /dev/null || { echo 'Installing xz-utils for DietPi image decompression'; apt-get update; apt-get -y install xz-utils; }
@@ -11,71 +42,98 @@ dpkg-query -s xz-utils &> /dev/null || { echo 'Installing xz-utils for DietPi im
 # Get the next available VMID
 ID=$(pvesh get /cluster/nextid)
 
-touch "/etc/pve/qemu-server/$ID.conf"
+# Create VM config file
+if ! touch "/etc/pve/qemu-server/$ID.conf"; then
+    echo "Error: Could not create VM configuration file"
+    cleanup
+fi
 
 # Get the storage name from the user
 STORAGE=$(whiptail --inputbox 'Enter the storage name where the image should be imported:' 8 78 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
+# Check if user cancelled or if storage is empty
+if [ $? -ne 0 ] || [ -z "$STORAGE" ]; then
+    echo "Storage selection cancelled or empty. Aborting."
+    cleanup
+fi
+
+# Create temporary directory for downloads
+TEMP_DIR=$(mktemp -d)
+cd "$TEMP_DIR" || cleanup
+
 # Download DietPi image
-wget "$IMAGE_URL"
+if ! wget "$IMAGE_URL"; then
+    echo "Error: Failed to download image"
+    cleanup
+fi
 
 # Decompress the image
 IMAGE_NAME=${IMAGE_URL##*/}
-xz -d "$IMAGE_NAME"
+if ! xz -d "$IMAGE_NAME"; then
+    echo "Error: Failed to decompress image"
+    cleanup
+fi
+
 IMAGE_NAME=${IMAGE_NAME%.xz}
-sleep 3
 
 # Import the qcow2 file to the specified storage
 echo "Importing disk image to storage..."
-qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"
-
-# Retrieve the disk path for further usage and print for user
-DISK_PATH=$(qm config "$ID" | awk '/unused0/{print $2;exit}')
-if [[ $DISK_PATH ]]; then
-    echo "Disk path: $DISK_PATH"
-else
-    echo "Error: Failed to import disk for VM $ID"
-    exit 1
+if ! qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"; then
+    echo "Error: Failed to import disk"
+    cleanup
 fi
 
-# Set VM settings
-qm set "$ID" --cores "$CORES"
-qm set "$ID" --memory "$RAM"
-qm set "$ID" --scsihw virtio-scsi-pci
-qm set "$ID" --net0 'virtio,bridge=vmbr0'
-qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1"
-qm set "$ID" --ostype l26
+# Retrieve the disk path
+DISK_PATH=$(qm config "$ID" | awk '/unused0/{print $2;exit}')
+if [[ ! $DISK_PATH ]]; then
+    echo "Error: Failed to get disk path"
+    cleanup
+fi
 
-# Verify if the disk was set correctly
+echo "Disk path: $DISK_PATH"
+
+# Set VM settings
+qm set "$ID" --cores "$CORES" || cleanup
+qm set "$ID" --memory "$RAM" || cleanup
+qm set "$ID" --scsihw virtio-scsi-pci || cleanup
+qm set "$ID" --net0 'virtio,bridge=vmbr0' || cleanup
+qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1" || cleanup
+qm set "$ID" --ostype l26 || cleanup
+
+# Verify disk setup and set boot order
 if qm config "$ID" | grep -q "scsi0"; then
     qm set "$ID" --boot order='scsi0'
 else
     echo "Error: Failed to set the disk for VM $ID"
-    exit 1
+    cleanup
 fi
 
+# Set VM name
 qm set "$ID" --name 'dietpi' >/dev/null
 
-# Description with logo and horizontal links
+# Set description
 DESCRIPTION='
 <p align="center">
-  <img src="https://dietpi.com/images/dietpi-logo_128x128.png" alt="DietPi Logo" width="40">
-  <br>
-  <strong>DietPi VM</strong>
-  <br>
-  <a href="https://dietpi.com/">Website</a> &bull; 
-  <a href="https://dietpi.com/docs/">Documentation</a> &bull; 
-  <a href="https://dietpi.com/forum/">Forum</a>
-  <br>
-  <a href="https://dietpi.com/blog/">Blog</a> &bull; 
-  <a href="https://github.com/MichaIng/DietPi">GitHub</a>
+<img src="https://dietpi.com/images/dietpi-logo_128x128.png" alt="DietPi Logo" width="40">
+<br>
+<strong>DietPi VM</strong>
+<br>
+<a href="https://dietpi.com/">Website</a> &bull; 
+<a href="https://dietpi.com/docs/">Documentation</a> &bull; 
+<a href="https://dietpi.com/forum/">Forum</a>
+<br>
+<a href="https://dietpi.com/blog/">Blog</a> &bull; 
+<a href="https://github.com/MichaIng/DietPi">GitHub</a>
 </p>
 '
 
 qm set "$ID" --description "$DESCRIPTION" >/dev/null
 
-# Tell user the virtual machine is created  
-echo "VM $ID Created."
+# Clean up temporary files
+cd - || cleanup
+rm -rf "$TEMP_DIR"
+
+echo "VM $ID Created successfully."
 
 # Start the virtual machine
 qm start "$ID"
