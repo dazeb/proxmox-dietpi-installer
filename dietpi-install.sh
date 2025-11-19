@@ -15,7 +15,7 @@ cleanup() {
 trap cleanup INT TERM
 
 # Variables
-IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Trixie.qcow2.xz):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Trixie.qcow2.xz' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
 # Check if user cancelled
 if [ $? -ne 0 ]; then
