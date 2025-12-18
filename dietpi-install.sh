@@ -15,6 +15,7 @@ cleanup() {
 
 # Trap Ctrl+C and other interrupts
 trap cleanup INT TERM
+echo 'DEBUG: Trap setup complete'
 
 # Verify SHA256 checksum
 verify_sha256() {
