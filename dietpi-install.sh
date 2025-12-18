@@ -136,6 +136,7 @@ verify_download() {
 }
 
 # Select DietPi OS Version
+echo 'Starting DietPi installer...'
 while true; do
     OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:' 19 65 11 \
         ''                '───────── Debian 13 Trixie ─────────' \
