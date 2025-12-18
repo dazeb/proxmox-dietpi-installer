@@ -14,13 +14,65 @@ cleanup() {
 # Trap Ctrl+C and other interrupts
 trap cleanup INT TERM
 
-# Variables
-IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image (default: https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Trixie.qcow2.xz):' 8 78 'https://dietpi.com/downloads/images/DietPi_Proxmox-x86_64-Trixie.qcow2.xz' --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+# Select DietPi OS Version
+while true; do
+    OS_VERSION=$(whiptail --title "DietPi Installation" --menu "Select DietPi image:" 22 65 13 \
+        "."               "───────── Debian 13 Trixie ─────────" \
+        "trixie"          "Standard (Recommended)" \
+        "trixie-uefi"     "UEFI Boot" \
+        ".."              "───────── Debian 12 Bookworm ───────" \
+        "bookworm"        "Standard" \
+        "bookworm-uefi"   "UEFI Boot" \
+        "..."             "───────── Debian 14 Forky ──────────" \
+        "forky"           "Standard (Testing)" \
+        "forky-uefi"      "UEFI Boot (Testing)" \
+        "...."            "─────────────────────────────────────" \
+        "custom"          "Custom URL" 3>&1 1>&2 2>&3)
 
-# Check if user cancelled
-if [ $? -ne 0 ]; then
-    cleanup
-fi
+    # Check if user cancelled
+    if [ $? -ne 0 ]; then
+        cleanup
+    fi
+
+    # If separator selected, show menu again
+    case "$OS_VERSION" in
+        .|..|...|....) continue ;;
+        *) break ;;
+    esac
+done
+
+# Set IMAGE_URL based on selection
+BASE_URL="https://dietpi.com/downloads/images"
+case $OS_VERSION in
+    trixie)
+        IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz"
+        ;;
+    trixie-uefi)
+        IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Trixie.qcow2.xz"
+        ;;
+    bookworm)
+        IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz"
+        ;;
+    bookworm-uefi)
+        IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Bookworm.qcow2.xz"
+        ;;
+    forky)
+        IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Forky.qcow2.xz"
+        ;;
+    forky-uefi)
+        IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Forky.qcow2.xz"
+        ;;
+    custom)
+        IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+        if [ $? -ne 0 ]; then
+            cleanup
+        fi
+        ;;
+    *)
+        echo "Invalid selection"
+        cleanup
+        ;;
+esac
 
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
