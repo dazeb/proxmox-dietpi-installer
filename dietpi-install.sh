@@ -28,7 +28,7 @@ verify_sha256() {
     fi
 
     echo "Verifying SHA256 checksum..."
-    if ! sha256sum -c "${image_file}.sha256" 2>/dev/null | grep -q "OK"; then
+    if ! sha256sum -c "${image_file}.sha256" | grep -q "OK"; then
         echo "ERROR: SHA256 checksum verification FAILED!"
         echo "The downloaded file may be corrupted or tampered with."
         return 1
