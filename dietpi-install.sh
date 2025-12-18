@@ -58,7 +58,7 @@ import_dietpi_gpg_key() {
     echo "Importing DietPi GPG public key..."
 
     # Try to download and import key from GitHub
-    if wget -q "$key_url" -O dietpi.gpg && gpg --import dietpi.gpg &>/dev/null; then
+    if wget -q "$key_url" -O dietpi.gpg && gpg --import dietpi.gpg >/dev/null; then
         rm -f dietpi.gpg
         echo "✓ DietPi GPG key imported successfully"
         return 0
