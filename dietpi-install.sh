@@ -91,7 +91,7 @@ verify_gpg_signature() {
 
     echo 'Verifying GPG signature...'
     # Verify signature
-    if gpg --verify "${image_file}.asc" "$image_file" &>/dev/null; then
+    if gpg --verify "${image_file}.asc" "$image_file" 2>&1 | grep -q 'Good signature'; then
         echo '✓ GPG signature verified successfully'
     else
         echo 'Note: GPG signature could not be verified'
