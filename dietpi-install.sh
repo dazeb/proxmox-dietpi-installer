@@ -16,18 +16,18 @@ trap cleanup INT TERM
 
 # Select DietPi OS Version
 while true; do
-    OS_VERSION=$(whiptail --title "DietPi Installation" --menu "Select DietPi image:" 22 65 13 \
-        "."               "───────── Debian 13 Trixie ─────────" \
-        "trixie"          "Standard (Recommended)" \
-        "trixie-uefi"     "UEFI Boot" \
-        ".."              "───────── Debian 12 Bookworm ───────" \
-        "bookworm"        "Standard" \
-        "bookworm-uefi"   "UEFI Boot" \
-        "..."             "───────── Debian 14 Forky ──────────" \
-        "forky"           "Standard (Testing)" \
-        "forky-uefi"      "UEFI Boot (Testing)" \
-        "...."            "─────────────────────────────────────" \
-        "custom"          "Custom URL" 3>&1 1>&2 2>&3)
+    OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:' 19 65 11 \
+        ''                '───────── Debian 13 Trixie ─────────' \
+        'trixie'          'Standard (Recommended)' \
+        'trixie-uefi'     'UEFI Boot' \
+        ''                '───────── Debian 12 Bookworm ───────' \
+        'bookworm'        'Standard' \
+        'bookworm-uefi'   'UEFI Boot' \
+        ''                '───────── Debian 14 Forky ──────────' \
+        'forky'           'Standard (Testing)' \
+        'forky-uefi'      'UEFI Boot (Testing)' \
+        ''                '────────────────────────────────────' \
+        'custom'          'Custom URL' 3>&1 1>&2 2>&3)
 
     # Check if user cancelled
     if [ $? -ne 0 ]; then
@@ -35,10 +35,9 @@ while true; do
     fi
 
     # If separator selected, show menu again
-    case "$OS_VERSION" in
-        .|..|...|....) continue ;;
-        *) break ;;
-    esac
+    if [ -n "$OS_VERSION" ]; then
+        break
+    fi
 done
 
 # Set IMAGE_URL based on selection
