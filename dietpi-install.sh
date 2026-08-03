@@ -137,7 +137,7 @@ verify_download() {
 
 # Select DietPi OS Version
 while true; do
-    OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:' 19 65 11 \
+    OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:\n\nUEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot.' 22 65 11 \
         ''                '───────── Debian 13 Trixie ─────────' \
         'trixie'          'Standard (Recommended)' \
         'trixie-uefi'     'UEFI Boot' \
@@ -202,10 +202,14 @@ esac
 VERIFY_DOWNLOAD='true'
 if [ "$OS_VERSION" = 'custom' ]; then
     VERIFY_DOWNLOAD='false'
-    # Detect UEFI images from custom URLs too
-    case $IMAGE_URL in
-        *UEFI*) UEFI='true' ;;
+    # Ask about firmware for custom images, guessing from the URL
+    GUESS='--defaultno'
+    case ${IMAGE_URL^^} in
+        *UEFI*) GUESS='' ;;
     esac
+    if whiptail --title 'DietPi Installation' $GUESS --yesno 'Is this a UEFI image? (the VM will get OVMF firmware and an EFI disk)' 8 70; then
+        UEFI='true'
+    fi
 fi
 
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
@@ -238,7 +242,7 @@ fi
 STORAGE_OPTIONS=()
 while read -r storage_name; do
     STORAGE_OPTIONS+=("$storage_name" '')
-done < <(pvesm status --content images | awk 'NR>1 {print $1}')
+done < <(pvesm status --content images | awk 'NR>1 && $3=="active" {print $1}')
 
 if [ ${#STORAGE_OPTIONS[@]} -eq 0 ]; then
     echo 'Error: No storage with VM image support found'
@@ -328,13 +332,14 @@ qm set "$ID" --ostype l26 || cleanup
 # UEFI images need OVMF and an EFI disk. Keys are pre-enrolled since the
 # DietPi images ship the signed Debian boot chain, so Secure Boot works.
 if [ "$UEFI" = 'true' ]; then
+    qm set "$ID" --machine q35 || cleanup
     qm set "$ID" --bios ovmf || cleanup
     qm set "$ID" --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=1" || cleanup
 fi
 
 # Verify disk setup and set boot order
 if qm config "$ID" | grep -q 'scsi0'; then
-    qm set "$ID" --boot order='scsi0'
+    qm set "$ID" --boot order='scsi0' || cleanup
 else
     echo "Error: Failed to set the disk for VM $ID"
     cleanup
