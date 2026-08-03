@@ -137,7 +137,7 @@ verify_download() {
 
 # Select DietPi OS Version
 while true; do
-    OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:\n\nUEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot.' 22 65 11 \
+    OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:\n\nUEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot.' 22 75 11 \
         ''                '───────── Debian 13 Trixie ─────────' \
         'trixie'          'Standard (Recommended)' \
         'trixie-uefi'     'UEFI Boot' \
