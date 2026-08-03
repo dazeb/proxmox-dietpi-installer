@@ -325,11 +325,11 @@ qm set "$ID" --net0 'virtio,bridge=vmbr0' || cleanup
 qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1" || cleanup
 qm set "$ID" --ostype l26 || cleanup
 
-# UEFI images need OVMF and an EFI disk. Secure boot keys are left
-# unenrolled since the DietPi kernel is not signed.
+# UEFI images need OVMF and an EFI disk. Keys are pre-enrolled since the
+# DietPi images ship the signed Debian boot chain, so Secure Boot works.
 if [ "$UEFI" = 'true' ]; then
     qm set "$ID" --bios ovmf || cleanup
-    qm set "$ID" --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=0" || cleanup
+    qm set "$ID" --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=1" || cleanup
 fi
 
 # Verify disk setup and set boot order
