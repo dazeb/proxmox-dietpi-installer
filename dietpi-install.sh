@@ -163,24 +163,28 @@ done
 
 # Set IMAGE_URL based on selection
 BASE_URL='https://dietpi.com/downloads/images'
+UEFI='false'
 case $OS_VERSION in
     trixie)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz"
         ;;
     trixie-uefi)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Trixie.qcow2.xz"
+        UEFI='true'
         ;;
     bookworm)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz"
         ;;
     bookworm-uefi)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Bookworm.qcow2.xz"
+        UEFI='true'
         ;;
     forky)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Forky.qcow2.xz"
         ;;
     forky-uefi)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Forky.qcow2.xz"
+        UEFI='true'
         ;;
     custom)
         IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3)
@@ -198,6 +202,10 @@ esac
 VERIFY_DOWNLOAD='true'
 if [ "$OS_VERSION" = 'custom' ]; then
     VERIFY_DOWNLOAD='false'
+    # Detect UEFI images from custom URLs too
+    case $IMAGE_URL in
+        *UEFI*) UEFI='true' ;;
+    esac
 fi
 
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
@@ -226,8 +234,18 @@ if ! touch "/etc/pve/qemu-server/$ID.conf"; then
     cleanup
 fi
 
-# Get the storage name from the user
-STORAGE=$(whiptail --inputbox 'Enter the storage name where the image should be imported:' 8 78 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+# Let the user pick a storage that can hold VM images
+STORAGE_OPTIONS=()
+while read -r storage_name; do
+    STORAGE_OPTIONS+=("$storage_name" '')
+done < <(pvesm status --content images | awk 'NR>1 {print $1}')
+
+if [ ${#STORAGE_OPTIONS[@]} -eq 0 ]; then
+    echo 'Error: No storage with VM image support found'
+    cleanup
+fi
+
+STORAGE=$(whiptail --title 'DietPi Installation' --menu 'Select the storage where the image should be imported:' 16 60 8 "${STORAGE_OPTIONS[@]}" 3>&1 1>&2 2>&3)
 
 # Check if user cancelled or if storage is empty
 if [ $? -ne 0 ] || [ -z "$STORAGE" ]; then
@@ -306,6 +324,13 @@ qm set "$ID" --scsihw virtio-scsi-pci || cleanup
 qm set "$ID" --net0 'virtio,bridge=vmbr0' || cleanup
 qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1" || cleanup
 qm set "$ID" --ostype l26 || cleanup
+
+# UEFI images need OVMF and an EFI disk. Secure boot keys are left
+# unenrolled since the DietPi kernel is not signed.
+if [ "$UEFI" = 'true' ]; then
+    qm set "$ID" --bios ovmf || cleanup
+    qm set "$ID" --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=0" || cleanup
+fi
 
 # Verify disk setup and set boot order
 if qm config "$ID" | grep -q 'scsi0'; then
