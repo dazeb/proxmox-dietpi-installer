@@ -1,14 +1,19 @@
 #!/bin/bash
 
+TEMP_DIR=''
+VM_CREATED=''
+
 # Cleanup function
 cleanup() {
     echo 'Cleaning up...'
-    # Remove any downloaded files
-    rm -f DietPi_*
-    # Remove any verification files
-    rm -f *.sha256 *.asc dietpi.gpg
-    # Remove any temporary files
-    rm -f /tmp/dietpi_*
+    # Remove the VM if it was created but not fully configured yet
+    if [[ -n $VM_CREATED ]]; then
+        qm destroy "$VM_CREATED" --purge &> /dev/null
+    fi
+    # Downloads only ever live in the temporary directory
+    if [[ -n $TEMP_DIR && -d $TEMP_DIR ]]; then
+        cd / && rm -rf "$TEMP_DIR"
+    fi
     echo 'Cleanup complete. Exiting.'
     exit 1
 }
@@ -38,41 +43,12 @@ verify_sha256() {
     return 0
 }
 
-# Import DietPi GPG public key (optional - won't fail if import unsuccessful)
-import_dietpi_gpg_key() {
-    # Check if GPG is available
-    if ! command -v gpg &> /dev/null; then
-        return 1
-    fi
-
-    # DietPi GPG key details
-    local key_id='C2C4D1DEF7C96C6EDF3937B2536B2A4A2E72D870'
-    local key_url='https://github.com/MichaIng.gpg'
-
-    # Check if key is already imported
-    if gpg --list-keys "$key_id" &>/dev/null; then
-        echo '✓ DietPi GPG key already imported'
-        return 0
-    fi
-
-    echo 'Importing DietPi GPG public key...'
-
-    # Try to download and import key from GitHub
-    if wget -q "$key_url" -O dietpi.gpg && gpg --import dietpi.gpg >/dev/null; then
-        rm -f dietpi.gpg
-        echo '✓ DietPi GPG key imported successfully'
-        return 0
-    else
-        rm -f dietpi.gpg
-        echo 'Note: Could not import DietPi GPG key'
-        return 1
-    fi
-}
-
-# Verify GPG signature (optional - won't fail if GPG unavailable)
+# Verify GPG signature against the pinned DietPi signing key
 verify_gpg_signature() {
     local image_file="$1"
     local signature_url="$2"
+    local key_fpr='C2C4D1DEF7C96C6EDF3937B2536B2A4A2E72D870'
+    local key_url='https://github.com/MichaIng.gpg'
 
     # Check if GPG is available
     if ! command -v gpg &> /dev/null; then
@@ -80,25 +56,43 @@ verify_gpg_signature() {
         return 0
     fi
 
-    # Try to import DietPi GPG key
-    import_dietpi_gpg_key
-
     echo 'Downloading GPG signature...'
     if ! wget -q "$signature_url" -O "${image_file}.asc"; then
-        echo 'Warning: Could not download signature file, skipping GPG verification'
-        return 0
+        echo 'ERROR: Could not download signature file'
+        return 1
+    fi
+
+    # Throwaway keyring, so the check neither trusts nor pollutes the host one
+    local gnupg_home status
+    gnupg_home=$(mktemp -d) || return 1
+    chmod 700 "$gnupg_home"
+
+    echo 'Importing DietPi GPG public key...'
+    if ! wget -q "$key_url" -O "$gnupg_home/dietpi.gpg" || ! GNUPGHOME=$gnupg_home gpg -q --import "$gnupg_home/dietpi.gpg" 2>/dev/null; then
+        rm -rf "$gnupg_home"
+        echo 'ERROR: Could not download or import the DietPi GPG key'
+        return 1
+    fi
+
+    if ! GNUPGHOME=$gnupg_home gpg --with-colons --fingerprint --list-keys 2>/dev/null | grep -q ":$key_fpr:"; then
+        rm -rf "$gnupg_home"
+        echo 'ERROR: Downloaded key does not contain the pinned DietPi fingerprint'
+        return 1
     fi
 
     echo 'Verifying GPG signature...'
-    # Verify signature
-    if gpg --verify "${image_file}.asc" "$image_file" 2>&1 | grep -q 'Good signature'; then
+    status=$(GNUPGHOME=$gnupg_home gpg --status-fd 1 --verify "${image_file}.asc" "$image_file" 2>/dev/null)
+    rm -rf "$gnupg_home"
+
+    # VALIDSIG carries the fingerprint of the key that made the signature
+    if echo "$status" | grep '^\[GNUPG:\] VALIDSIG' | grep -q "$key_fpr"; then
         echo '✓ GPG signature verified successfully'
-    else
-        echo 'Note: GPG signature could not be verified'
-        echo '      This is optional - continuing with SHA256 verification only'
+        return 0
     fi
 
-    return 0
+    echo 'ERROR: GPG signature verification FAILED!'
+    echo 'The downloaded file may be corrupted or tampered with.'
+    return 1
 }
 
 # Prompt user to retry download on verification failure
@@ -127,8 +121,10 @@ verify_download() {
         return 1
     fi
 
-    # GPG signature verification (optional)
-    verify_gpg_signature "$image_file" "$signature_url"
+    # GPG signature verification (mandatory when GPG is available)
+    if ! verify_gpg_signature "$image_file" "$signature_url"; then
+        return 1
+    fi
 
     echo '=== Verification Complete ==='
     echo ''
@@ -137,7 +133,7 @@ verify_download() {
 
 # Select DietPi OS Version
 while true; do
-    OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:' 19 65 11 \
+    OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:\n\nUEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot.' 22 75 11 \
         ''                '───────── Debian 13 Trixie ─────────' \
         'trixie'          'Standard (Recommended)' \
         'trixie-uefi'     'UEFI Boot' \
@@ -163,24 +159,28 @@ done
 
 # Set IMAGE_URL based on selection
 BASE_URL='https://dietpi.com/downloads/images'
+UEFI='false'
 case $OS_VERSION in
     trixie)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz"
         ;;
     trixie-uefi)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Trixie.qcow2.xz"
+        UEFI='true'
         ;;
     bookworm)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz"
         ;;
     bookworm-uefi)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Bookworm.qcow2.xz"
+        UEFI='true'
         ;;
     forky)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Forky.qcow2.xz"
         ;;
     forky-uefi)
         IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Forky.qcow2.xz"
+        UEFI='true'
         ;;
     custom)
         IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3)
@@ -198,6 +198,14 @@ esac
 VERIFY_DOWNLOAD='true'
 if [ "$OS_VERSION" = 'custom' ]; then
     VERIFY_DOWNLOAD='false'
+    # Ask about firmware for custom images, guessing from the URL
+    GUESS='--defaultno'
+    case ${IMAGE_URL^^} in
+        *UEFI*) GUESS='' ;;
+    esac
+    if whiptail --title 'DietPi Installation' $GUESS --yesno 'Is this a UEFI image? (the VM will get OVMF firmware and an EFI disk)' 8 70; then
+        UEFI='true'
+    fi
 fi
 
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
@@ -217,17 +225,18 @@ fi
 # Install xz-utils if missing
 dpkg-query -s xz-utils &> /dev/null || { echo 'Installing xz-utils for DietPi image decompression'; apt-get update; apt-get -y install xz-utils; }
 
-# Get the next available VMID
-ID=$(pvesh get /cluster/nextid)
+# Let the user pick a storage that can hold VM images
+STORAGE_OPTIONS=()
+while read -r storage_name; do
+    STORAGE_OPTIONS+=("$storage_name" '')
+done < <(pvesm status --content images | awk 'NR>1 && $3=="active" {print $1}')
 
-# Create VM config file
-if ! touch "/etc/pve/qemu-server/$ID.conf"; then
-    echo 'Error: Could not create VM configuration file'
+if [ ${#STORAGE_OPTIONS[@]} -eq 0 ]; then
+    echo 'Error: No storage with VM image support found'
     cleanup
 fi
 
-# Get the storage name from the user
-STORAGE=$(whiptail --inputbox 'Enter the storage name where the image should be imported:' 8 78 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+STORAGE=$(whiptail --title 'DietPi Installation' --menu 'Select the storage where the image should be imported:' 16 60 8 "${STORAGE_OPTIONS[@]}" 3>&1 1>&2 2>&3)
 
 # Check if user cancelled or if storage is empty
 if [ $? -ne 0 ] || [ -z "$STORAGE" ]; then
@@ -283,6 +292,22 @@ fi
 
 IMAGE_NAME=${IMAGE_NAME%.xz}
 
+# Create the VM this late so a cancelled prompt or failed download leaves
+# nothing behind. qm create fails if the ID got taken by a concurrent run
+# in the meantime, so retry with a fresh one.
+for _ in 1 2 3; do
+    ID=$(pvesh get /cluster/nextid)
+    if qm create "$ID" --name 'dietpi' --ostype l26 --cores "$CORES" --memory "$RAM" --scsihw virtio-scsi-pci --net0 'virtio,bridge=vmbr0'; then
+        VM_CREATED=$ID
+        break
+    fi
+done
+
+if [ -z "$VM_CREATED" ]; then
+    echo 'Error: Could not create the VM'
+    cleanup
+fi
+
 # Import the qcow2 file to the specified storage
 echo 'Importing disk image to storage...'
 if ! qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"; then
@@ -299,24 +324,24 @@ fi
 
 echo "Disk path: $DISK_PATH"
 
-# Set VM settings
-qm set "$ID" --cores "$CORES" || cleanup
-qm set "$ID" --memory "$RAM" || cleanup
-qm set "$ID" --scsihw virtio-scsi-pci || cleanup
-qm set "$ID" --net0 'virtio,bridge=vmbr0' || cleanup
+# Attach the imported disk
 qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1" || cleanup
-qm set "$ID" --ostype l26 || cleanup
+
+# UEFI images need OVMF and an EFI disk. Keys are pre-enrolled since the
+# DietPi images ship the signed Debian boot chain, so Secure Boot works.
+if [ "$UEFI" = 'true' ]; then
+    qm set "$ID" --machine q35 || cleanup
+    qm set "$ID" --bios ovmf || cleanup
+    qm set "$ID" --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=1" || cleanup
+fi
 
 # Verify disk setup and set boot order
 if qm config "$ID" | grep -q 'scsi0'; then
-    qm set "$ID" --boot order='scsi0'
+    qm set "$ID" --boot order='scsi0' || cleanup
 else
     echo "Error: Failed to set the disk for VM $ID"
     cleanup
 fi
-
-# Set VM name
-qm set "$ID" --name 'dietpi' >/dev/null
 
 # Set description
 DESCRIPTION='
@@ -335,6 +360,9 @@ DESCRIPTION='
 '
 
 qm set "$ID" --description "$DESCRIPTION" >/dev/null
+
+# The VM is complete: from here on, a failure no longer removes it
+VM_CREATED=''
 
 # Clean up temporary files
 cd - || cleanup

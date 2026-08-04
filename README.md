@@ -75,12 +75,12 @@ The rest is automatic. Be sure to open the DietPi VM console once the installer 
 
 The `dietpi-install.sh` script performs the following steps:
 
-1. **Prompts for User Input**: Asks for the storage location name.
+1. **Prompts for User Input**: Select the DietPi image (BIOS or UEFI), RAM, cores and the target storage from a menu.
 2. **Installs Required Packages**: Installs `xz-utils` if it is not already installed.
 3. **Gets the Next Available VMID**: Retrieves the next available VMID from Proxmox.
 4. **Downloads and Decompresses the DietPi Image**: Downloads the specified DietPi image and decompresses it.
 5. **Imports the Disk Image**: Imports the decompressed disk image into the specified storage.
-6. **Configures the VM**: Sets the VM's CPU cores, RAM, SCSI hardware, network, and disk settings.
+6. **Configures the VM**: Sets the VM's CPU cores, RAM, SCSI hardware, network, and disk settings. UEFI images get the q35 machine type, OVMF and an EFI disk.
 7. **Sets VM Metadata**: Sets the VM's name and description.
 8. **Starts the VM**: Starts the newly created VM.
 
