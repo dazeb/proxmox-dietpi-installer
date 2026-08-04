@@ -7,11 +7,11 @@ VM_CREATED=''
 cleanup() {
     echo 'Cleaning up...'
     # Remove the VM if it was created but not fully configured yet
-    if [ -n "$VM_CREATED" ]; then
+    if [[ -n $VM_CREATED ]]; then
         qm destroy "$VM_CREATED" --purge &> /dev/null
     fi
     # Downloads only ever live in the temporary directory
-    if [ -n "$TEMP_DIR" ] && [ -d "$TEMP_DIR" ]; then
+    if [[ -n $TEMP_DIR && -d $TEMP_DIR ]]; then
         cd / && rm -rf "$TEMP_DIR"
     fi
     echo 'Cleanup complete. Exiting.'
