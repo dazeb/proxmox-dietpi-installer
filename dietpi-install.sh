@@ -3,23 +3,22 @@
 TEMP_DIR=''
 VM_CREATED=''
 
-# Cleanup function
+# Runs on every exit, good or bad. VM_CREATED is cleared once the VM is fully
+# configured, so a finished VM is never touched.
 cleanup() {
-    echo 'Cleaning up...'
-    # Remove the VM if it was created but not fully configured yet
     if [[ -n $VM_CREATED ]]; then
+        echo 'Removing incomplete VM...'
         qm destroy "$VM_CREATED" --purge &> /dev/null
     fi
     # Downloads only ever live in the temporary directory
     if [[ -n $TEMP_DIR && -d $TEMP_DIR ]]; then
         cd / && rm -rf "$TEMP_DIR"
     fi
-    echo 'Cleanup complete. Exiting.'
-    exit 1
 }
-
-# Trap Ctrl+C and other interrupts
-trap cleanup INT TERM
+trap cleanup EXIT
+# An interrupt alone does not make bash abort a running script, so route
+# Ctrl+C and TERM through the same exit path
+trap 'exit 1' INT TERM
 
 # Verify SHA256 checksum
 verify_sha256() {
@@ -95,13 +94,9 @@ verify_gpg_signature() {
     return 1
 }
 
-# Prompt user to retry download on verification failure
+# Ask whether to retry a failed download
 retry_download_prompt() {
-    if whiptail --title 'Verification Failed' --yesno 'Download verification failed. Would you like to retry the download?' 10 60 3>&1 1>&2 2>&3; then
-        return 0  # User wants to retry
-    else
-        return 1  # User wants to abort
-    fi
+    whiptail --title 'Verification Failed' --yesno 'Download verification failed. Would you like to retry the download?' 10 60
 }
 
 # Main verification function
@@ -131,7 +126,7 @@ verify_download() {
     return 0
 }
 
-# Select DietPi OS Version
+# Select DietPi OS Version; an empty selection is a separator row, ask again
 while true; do
     OS_VERSION=$(whiptail --title 'DietPi Installation' --menu 'Select DietPi image:\n\nUEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot.' 22 75 11 \
         ''                '───────── Debian 13 Trixie ─────────' \
@@ -144,17 +139,8 @@ while true; do
         'forky'           'Standard (Testing)' \
         'forky-uefi'      'UEFI Boot (Testing)' \
         ''                '────────────────────────────────────' \
-        'custom'          'Custom URL' 3>&1 1>&2 2>&3)
-
-    # Check if user cancelled
-    if [ $? -ne 0 ]; then
-        cleanup
-    fi
-
-    # If separator selected, show menu again
-    if [ -n "$OS_VERSION" ]; then
-        break
-    fi
+        'custom'          'Custom URL' 3>&1 1>&2 2>&3) || exit 1
+    [[ -n $OS_VERSION ]] && break
 done
 
 # Set IMAGE_URL based on selection
@@ -183,20 +169,17 @@ case $OS_VERSION in
         UEFI='true'
         ;;
     custom)
-        IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3)
-        if [ $? -ne 0 ]; then
-            cleanup
-        fi
+        IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3) || exit 1
         ;;
     *)
         echo 'Invalid selection'
-        cleanup
+        exit 1
         ;;
 esac
 
 # Flag to track if we should verify download (only for official images)
 VERIFY_DOWNLOAD='true'
-if [ "$OS_VERSION" = 'custom' ]; then
+if [[ $OS_VERSION == 'custom' ]]; then
     VERIFY_DOWNLOAD='false'
     # Ask about firmware for custom images, guessing from the URL
     GUESS='--defaultno'
@@ -208,19 +191,9 @@ if [ "$OS_VERSION" = 'custom' ]; then
     fi
 fi
 
-RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3) || exit 1
 
-# Check if user cancelled
-if [ $? -ne 0 ]; then
-    cleanup
-fi
-
-CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
-
-# Check if user cancelled
-if [ $? -ne 0 ]; then
-    cleanup
-fi
+CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3) || exit 1
 
 # Install xz-utils if missing
 dpkg-query -s xz-utils &> /dev/null || { echo 'Installing xz-utils for DietPi image decompression'; apt-get update; apt-get -y install xz-utils; }
@@ -231,63 +204,48 @@ while read -r storage_name; do
     STORAGE_OPTIONS+=("$storage_name" '')
 done < <(pvesm status --content images | awk 'NR>1 && $3=="active" {print $1}')
 
-if [ ${#STORAGE_OPTIONS[@]} -eq 0 ]; then
+if [[ ${#STORAGE_OPTIONS[@]} -eq 0 ]]; then
     echo 'Error: No storage with VM image support found'
-    cleanup
+    exit 1
 fi
 
-STORAGE=$(whiptail --title 'DietPi Installation' --menu 'Select the storage where the image should be imported:' 16 60 8 "${STORAGE_OPTIONS[@]}" 3>&1 1>&2 2>&3)
-
-# Check if user cancelled or if storage is empty
-if [ $? -ne 0 ] || [ -z "$STORAGE" ]; then
-    echo 'Storage selection cancelled or empty. Aborting.'
-    cleanup
-fi
+STORAGE=$(whiptail --title 'DietPi Installation' --menu 'Select the storage where the image should be imported:' 16 60 8 "${STORAGE_OPTIONS[@]}" 3>&1 1>&2 2>&3) || exit 1
 
 # Create temporary directory for downloads
-TEMP_DIR=$(mktemp -d)
-cd "$TEMP_DIR" || cleanup
+TEMP_DIR=$(mktemp -d) || exit 1
+cd "$TEMP_DIR" || exit 1
 
-# Download DietPi image with verification
-DOWNLOAD_SUCCESS=false
-while [ "$DOWNLOAD_SUCCESS" = 'false' ]; do
-    # Download the image
+# Download DietPi image, verified for the official ones. Writing through -O
+# keeps a retry on the same filename instead of numbered duplicates.
+IMAGE_NAME=${IMAGE_URL##*/}
+while true; do
     echo 'Downloading DietPi image...'
-    if ! wget "$IMAGE_URL"; then
+    if ! wget "$IMAGE_URL" -O "$IMAGE_NAME"; then
         echo 'Error: Failed to download image'
-        if ! retry_download_prompt; then
-            cleanup
-        fi
+        retry_download_prompt || exit 1
         continue
     fi
 
-    # Extract filename
-    IMAGE_NAME=${IMAGE_URL##*/}
-
-    # Verify download if this is an official image
-    if [ "$VERIFY_DOWNLOAD" = 'true' ]; then
+    if [[ $VERIFY_DOWNLOAD == 'true' ]]; then
         if ! verify_download "$IMAGE_NAME" "$IMAGE_URL"; then
-            # Verification failed - ask user to retry
-            if retry_download_prompt; then
-                echo 'Retrying download...'
-                rm -f "$IMAGE_NAME" "${IMAGE_NAME}.sha256" "${IMAGE_NAME}.asc"
-                continue
-            else
+            if ! retry_download_prompt; then
                 echo 'Verification failed and user chose to abort'
-                cleanup
+                exit 1
             fi
+            echo 'Retrying download...'
+            rm -f "$IMAGE_NAME" "${IMAGE_NAME}.sha256" "${IMAGE_NAME}.asc"
+            continue
         fi
     else
         echo 'Skipping verification for custom URL (user assumes risk)'
     fi
-
-    DOWNLOAD_SUCCESS=true
+    break
 done
 
 # Decompress the image
 if ! xz -d "$IMAGE_NAME"; then
     echo 'Error: Failed to decompress image'
-    cleanup
+    exit 1
 fi
 
 IMAGE_NAME=${IMAGE_NAME%.xz}
@@ -303,45 +261,38 @@ for _ in 1 2 3; do
     fi
 done
 
-if [ -z "$VM_CREATED" ]; then
+if [[ -z $VM_CREATED ]]; then
     echo 'Error: Could not create the VM'
-    cleanup
+    exit 1
 fi
 
 # Import the qcow2 file to the specified storage
 echo 'Importing disk image to storage...'
 if ! qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"; then
     echo 'Error: Failed to import disk'
-    cleanup
+    exit 1
 fi
 
 # Retrieve the disk path
 DISK_PATH=$(qm config "$ID" | awk '/unused0/{print $2;exit}')
-if [[ ! $DISK_PATH ]]; then
+if [[ -z $DISK_PATH ]]; then
     echo 'Error: Failed to get disk path'
-    cleanup
+    exit 1
 fi
 
 echo "Disk path: $DISK_PATH"
 
 # Attach the imported disk
-qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1" || cleanup
+qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1" || exit 1
 
 # UEFI images need OVMF and an EFI disk. Keys are pre-enrolled since the
 # DietPi images ship the signed Debian boot chain, so Secure Boot works.
-if [ "$UEFI" = 'true' ]; then
-    qm set "$ID" --machine q35 || cleanup
-    qm set "$ID" --bios ovmf || cleanup
-    qm set "$ID" --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=1" || cleanup
+if [[ $UEFI == 'true' ]]; then
+    qm set "$ID" --machine q35 --bios ovmf --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=1" || exit 1
 fi
 
-# Verify disk setup and set boot order
-if qm config "$ID" | grep -q 'scsi0'; then
-    qm set "$ID" --boot order='scsi0' || cleanup
-else
-    echo "Error: Failed to set the disk for VM $ID"
-    cleanup
-fi
+# Boot from the imported disk
+qm set "$ID" --boot order='scsi0' || exit 1
 
 # Set description
 DESCRIPTION='
@@ -350,23 +301,19 @@ DESCRIPTION='
 <br>
 <strong>DietPi VM</strong>
 <br>
-<a href="https://dietpi.com/">Website</a> &bull; 
-<a href="https://dietpi.com/docs/">Documentation</a> &bull; 
+<a href="https://dietpi.com/">Website</a> &bull;
+<a href="https://dietpi.com/docs/">Documentation</a> &bull;
 <a href="https://dietpi.com/forum/">Forum</a>
 <br>
-<a href="https://dietpi.com/blog/">Blog</a> &bull; 
+<a href="https://dietpi.com/blog/">Blog</a> &bull;
 <a href="https://github.com/MichaIng/DietPi">GitHub</a>
 </p>
 '
 
 qm set "$ID" --description "$DESCRIPTION" >/dev/null
 
-# The VM is complete: from here on, a failure no longer removes it
+# The VM is complete: from here on, the exit trap leaves it alone
 VM_CREATED=''
-
-# Clean up temporary files
-cd - || cleanup
-rm -rf "$TEMP_DIR"
 
 echo "VM $ID Created successfully."
 
