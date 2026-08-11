@@ -3,16 +3,28 @@
 
 # Proxmox DietPi Installer
 
-A Proxmox Helper Script to install DietPi in Proxmox 8.
+A Proxmox Helper Script to install DietPi in Proxmox 8 and 9.
+
+## Features
+
+- **BIOS and UEFI (Secure Boot) installs** — pick the matching DietPi image; UEFI VMs get q35, OVMF and an EFI disk with pre-enrolled keys
+- **Integrity-checked downloads** — official images are verified against a SHA-256 checksum and a GPG signature from the pinned DietPi signing key before anything is created
+- **Cleanup on cancel or failure** — cancelling at any prompt, or a failed download or import, removes the half-made VM and its temp files; Ctrl+C and SIGTERM do the same
+- **Retry without duplicates** — a failed download can be retried on the same filename, so no `file.1` leftovers build up
+- **Sensible defaults** — the VM matches the Proxmox web UI defaults, including the `x86-64-v2-AES` CPU model (plain `qm create` would silently hand out kvm64)
+- **Custom image URLs** — bring your own image (verification is skipped for custom URLs)
+
+## Requirements
+
+- Proxmox VE 8.x or 9.x
+- Root access to the Proxmox host (run from the console or an SSH session)
+- At least one storage with the **VM images** content type enabled (local-lvm, a dir storage, or ZFS all work)
+- Outbound internet access to `dietpi.com` and `github.com` (image, checksum and signature downloads)
 
 ## How to Use
 
-There are two ways to install DietPi VM in Proxmox:
-
-1. Use the one-liner installer directly from GitHub.
-2. Download the script directly.
-
-All commands should be run in the Proxmox console.
+There are two ways to install a DietPi VM: the one-liner, or a downloaded copy of the script.
+All commands should be run in the Proxmox shell as root.
 
 ---
 
@@ -28,74 +40,71 @@ bash <(curl -sSfL https://raw.githubusercontent.com/dazeb/proxmox-dietpi-install
 
 ### Download the Script
 
-You can download the script to your Proxmox host by cloning the repo or using `wget`.
-
-#### Clone the Repository
+Clone the repo or fetch the script with `wget`, make it executable, then run it:
 
 ```sh
 git clone https://github.com/dazeb/proxmox-dietpi-installer.git
-```
-
-Navigate into the folder, make the file executable, then run the script:
-
-```sh
 cd proxmox-dietpi-installer
 chmod +x dietpi-install.sh
 ./dietpi-install.sh
 ```
 
-#### Download Script Using `wget`
-
 ```sh
 wget https://raw.githubusercontent.com/dazeb/proxmox-dietpi-installer/main/dietpi-install.sh
-```
-
-Make the file executable, then run the script:
-
-```sh
 chmod +x dietpi-install.sh
 ./dietpi-install.sh
 ```
 
 ---
 
-### Installation Prompts
+## Installation Prompts
 
 The installer will ask for the following information:
 
-- Where to import the VM disk 
-- How much RAM to allocate (default 2GB)
-- The number of processor cores (default 2 Cores)
+- **DietPi image** — Debian 13 Trixie, Debian 12 Bookworm or Debian 14 Forky (testing), each in a Standard or UEFI Boot variant, plus a Custom URL option
+- **RAM** to allocate (default 2048 MB)
+- **CPU cores** (default 2)
+- **Storage** — pick from the host's image-capable storages
 
-The rest is automatic. Be sure to open the DietPi VM console once the installer finishes and complete the initial startup then you can shutdown and add changes eg, increasing cores, RAM, etc.  
+For custom URLs the installer also asks whether the image is UEFI (it guesses from the URL, so this is usually just a confirm).
+
+You can cancel at any prompt — the installer exits cleanly and leaves nothing behind.
 
 ---
 
-### What the Script Does
+## What the Script Does
 
-The `dietpi-install.sh` script performs the following steps:
+1. **Prompts** for the DietPi image, RAM, cores and target storage
+2. **Installs `xz-utils`** if it is not already installed
+3. **Downloads the image** to a temporary directory (with a retry prompt if the download fails)
+4. **Verifies the download** — SHA-256 checksum and GPG signature checked against the pinned DietPi signing key (official images only)
+5. **Decompresses the image**
+6. **Creates the VM** — a fresh VMID is picked, and the VM is only created after the image is verified, so an aborted run leaves nothing behind
+7. **Imports the disk** and attaches it as `scsi0` with discard and SSD optimisations
+8. **Configures the VM** — `x86-64-v2-AES` CPU model, RAM, cores and a virtio network device; UEFI images also get the q35 machine type, OVMF and an EFI disk with pre-enrolled Secure Boot keys
+9. **Sets metadata** — VM name and a description linking back to DietPi
+10. **Starts the VM**
 
-1. **Prompts for User Input**: Select the DietPi image (BIOS or UEFI), RAM, cores and the target storage from a menu.
-2. **Installs Required Packages**: Installs `xz-utils` if it is not already installed.
-3. **Gets the Next Available VMID**: Retrieves the next available VMID from Proxmox.
-4. **Downloads and Decompresses the DietPi Image**: Downloads the specified DietPi image and decompresses it.
-5. **Imports the Disk Image**: Imports the decompressed disk image into the specified storage.
-6. **Configures the VM**: Sets the VM's CPU cores, RAM, SCSI hardware, network, and disk settings. UEFI images get the q35 machine type, OVMF and an EFI disk.
-7. **Sets VM Metadata**: Sets the VM's name and description.
-8. **Starts the VM**: Starts the newly created VM.
+---
+
+## First Boot
+
+Open the VM console once the installer finishes and complete DietPi's initial setup. The default login is `root` / `dietpi` (change it during setup). After first-run is done you can shut down and adjust resources — cores, RAM, and so on — as needed.
+
+---
 
 ## Compatibility
 
-Tested and confirmed working with Proxmox 8.x.
+Tested and confirmed working with Proxmox 8.x and 9.x, for both BIOS and UEFI installs.
 
 ---
 
 ## Developers
 
-Developed by Darren Bennett & MichaIng
+Developed by Darren Bennett & MichaIng, with contributions from mews-se (download verification, cleanup rework, CPU defaults).
 
 ---
 
 ## More Helper Scripts
 
-For more helper scripts like this, check out [tteck's Proxmox Helper Scripts](https://tteck.github.io/Proxmox/)
+For more helper scripts like this, check out the [Proxmox VE Helper-Scripts](https://community-scripts.github.io/ProxmoxVE/)
