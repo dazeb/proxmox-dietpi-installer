@@ -7,7 +7,7 @@ A Proxmox Helper Script to install DietPi in Proxmox 8 and 9.
 
 ## Features
 
-- **BIOS and UEFI (Secure Boot) installs** — pick the matching DietPi image; UEFI VMs get q35, OVMF and an EFI disk with pre-enrolled keys
+- **BIOS and UEFI installs** — pick the matching DietPi image. UEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot; UEFI VMs get q35, OVMF and an EFI disk with pre-enrolled keys
 - **Integrity-checked downloads** — official images are verified against a SHA-256 checksum and a GPG signature from the pinned DietPi signing key before anything is created
 - **Cleanup on cancel or failure** — cancelling at any prompt, or a failed download or import, removes the half-made VM and its temp files; Ctrl+C and SIGTERM do the same
 - **Retry without duplicates** — a failed download can be retried on the same filename, so no `file.1` leftovers build up
@@ -90,6 +90,18 @@ You can cancel at any prompt — the installer exits cleanly and leaves nothing 
 ## First Boot
 
 Open the VM console once the installer finishes and complete DietPi's initial setup. The default login is `root` / `dietpi` (change it during setup). After first-run is done you can shut down and adjust resources — cores, RAM, and so on — as needed.
+
+---
+
+## GPU / PCIe Passthrough
+
+For PCIe/GPU passthrough, install with the UEFI image and switch the VM to the host CPU model after creation:
+
+```sh
+qm set <VMID> --cpu host
+```
+
+The installer creates the VM with the web UI's default CPU model (`x86-64-v2-AES`) so the switch is clean. Passthrough itself needs host-side IOMMU/VFIO setup, which this installer does not configure.
 
 ---
 
