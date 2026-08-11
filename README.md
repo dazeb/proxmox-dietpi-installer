@@ -5,15 +5,6 @@
 
 A Proxmox Helper Script to install DietPi in Proxmox 8 and 9.
 
-## Features
-
-- **BIOS and UEFI installs** — pick the matching DietPi image. UEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot; UEFI VMs get q35, OVMF and an EFI disk with pre-enrolled keys
-- **Integrity-checked downloads** — official images are verified against a SHA-256 checksum and a GPG signature from the pinned DietPi signing key before anything is created
-- **Cleanup on cancel or failure** — cancelling at any prompt, or a failed download or import, removes the half-made VM and its temp files; Ctrl+C and SIGTERM do the same
-- **Retry without duplicates** — a failed download can be retried on the same filename, so no `file.1` leftovers build up
-- **Sensible defaults** — the VM matches the Proxmox web UI defaults, including the `x86-64-v2-AES` CPU model (plain `qm create` would silently hand out kvm64)
-- **Custom image URLs** — bring your own image (verification is skipped for custom URLs)
-
 ## Requirements
 
 - Proxmox VE 8.x or 9.x
@@ -56,6 +47,15 @@ chmod +x dietpi-install.sh
 ```
 
 ---
+
+## Features
+
+- **BIOS and UEFI installs** — pick the matching DietPi image. UEFI (OVMF) is mainly needed for PCIe/GPU passthrough or Secure Boot; UEFI VMs get q35, OVMF and an EFI disk with pre-enrolled keys
+- **Integrity-checked downloads** — official images are verified against a SHA-256 checksum and a GPG signature from the pinned DietPi signing key before anything is created
+- **Cleanup on cancel or failure** — cancelling at any prompt, or a failed download or import, removes the half-made VM and its temp files; Ctrl+C and SIGTERM do the same
+- **Retry without duplicates** — a failed download can be retried on the same filename, so no `file.1` leftovers build up
+- **Sensible defaults** — the VM matches the Proxmox web UI defaults, including the `x86-64-v2-AES` CPU model (plain `qm create` would silently hand out kvm64)
+- **Custom image URLs** — bring your own image (verification is skipped for custom URLs)
 
 ## Installation Prompts
 
