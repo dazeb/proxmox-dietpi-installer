@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 TEMP_DIR=''
 VM_CREATED=''
 
@@ -8,7 +10,8 @@ VM_CREATED=''
 cleanup() {
     if [[ -n $VM_CREATED ]]; then
         echo 'Removing incomplete VM...'
-        qm destroy "$VM_CREATED" --purge &> /dev/null
+        # A failed destroy must not cut the cleanup short under set -e
+        qm destroy "$VM_CREATED" --purge &> /dev/null || :
     fi
     # Downloads only ever live in the temporary directory
     if [[ -n $TEMP_DIR && -d $TEMP_DIR ]]; then
@@ -16,9 +19,6 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
-# An interrupt alone does not make bash abort a running script, so route
-# Ctrl+C and TERM through the same exit path
-trap 'exit 1' INT TERM
 
 # Verify SHA256 checksum
 verify_sha256() {
@@ -27,14 +27,14 @@ verify_sha256() {
 
     echo 'Downloading SHA256 checksum...'
     if ! wget -q "$checksum_url" -O "${image_file}.sha256"; then
-        echo "Warning: Could not download checksum file from $checksum_url"
+        echo "Warning: Could not download checksum file from $checksum_url" >&2
         return 1
     fi
 
     echo 'Verifying SHA256 checksum...'
     if ! sha256sum -c "${image_file}.sha256" 2>/dev/null | grep -q 'OK'; then
-        echo 'ERROR: SHA256 checksum verification FAILED!'
-        echo 'The downloaded file may be corrupted or tampered with.'
+        echo 'ERROR: SHA256 checksum verification FAILED!' >&2
+        echo 'The downloaded file may be corrupted or tampered with.' >&2
         return 1
     fi
 
@@ -57,7 +57,7 @@ verify_gpg_signature() {
 
     echo 'Downloading GPG signature...'
     if ! wget -q "$signature_url" -O "${image_file}.asc"; then
-        echo 'ERROR: Could not download signature file'
+        echo 'ERROR: Could not download signature file' >&2
         return 1
     fi
 
@@ -69,13 +69,13 @@ verify_gpg_signature() {
     echo 'Importing DietPi GPG public key...'
     if ! wget -q "$key_url" -O "$gnupg_home/dietpi.gpg" || ! GNUPGHOME=$gnupg_home gpg -q --import "$gnupg_home/dietpi.gpg" 2>/dev/null; then
         rm -rf "$gnupg_home"
-        echo 'ERROR: Could not download or import the DietPi GPG key'
+        echo 'ERROR: Could not download or import the DietPi GPG key' >&2
         return 1
     fi
 
     if ! GNUPGHOME=$gnupg_home gpg --with-colons --fingerprint --list-keys 2>/dev/null | grep -q ":$key_fpr:"; then
         rm -rf "$gnupg_home"
-        echo 'ERROR: Downloaded key does not contain the pinned DietPi fingerprint'
+        echo 'ERROR: Downloaded key does not contain the pinned DietPi fingerprint' >&2
         return 1
     fi
 
@@ -89,8 +89,8 @@ verify_gpg_signature() {
         return 0
     fi
 
-    echo 'ERROR: GPG signature verification FAILED!'
-    echo 'The downloaded file may be corrupted or tampered with.'
+    echo 'ERROR: GPG signature verification FAILED!' >&2
+    echo 'The downloaded file may be corrupted or tampered with.' >&2
     return 1
 }
 
@@ -139,7 +139,7 @@ while true; do
         'forky'           'Standard (Testing)' \
         'forky-uefi'      'UEFI Boot (Testing)' \
         ''                '────────────────────────────────────' \
-        'custom'          'Custom URL' 3>&1 1>&2 2>&3) || exit 1
+        'custom'          'Custom URL' 3>&1 1>&2 2>&3)
     [[ -n $OS_VERSION ]] && break
 done
 
@@ -169,10 +169,10 @@ case $OS_VERSION in
         UEFI='true'
         ;;
     custom)
-        IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3) || exit 1
+        IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3)
         ;;
     *)
-        echo 'Invalid selection'
+        echo 'Invalid selection' >&2
         exit 1
         ;;
 esac
@@ -191,9 +191,9 @@ if [[ $OS_VERSION == 'custom' ]]; then
     fi
 fi
 
-RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3) || exit 1
+RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
-CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3) || exit 1
+CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
 # Install xz-utils if missing
 dpkg-query -s xz-utils &> /dev/null || { echo 'Installing xz-utils for DietPi image decompression'; apt-get update; apt-get -y install xz-utils; }
@@ -205,15 +205,15 @@ while read -r storage_name; do
 done < <(pvesm status --content images | awk 'NR>1 && $3=="active" {print $1}')
 
 if [[ ${#STORAGE_OPTIONS[@]} -eq 0 ]]; then
-    echo 'Error: No storage with VM image support found'
+    echo 'Error: No storage with VM image support found' >&2
     exit 1
 fi
 
-STORAGE=$(whiptail --title 'DietPi Installation' --menu 'Select the storage where the image should be imported:' 16 60 8 "${STORAGE_OPTIONS[@]}" 3>&1 1>&2 2>&3) || exit 1
+STORAGE=$(whiptail --title 'DietPi Installation' --menu 'Select the storage where the image should be imported:' 16 60 8 "${STORAGE_OPTIONS[@]}" 3>&1 1>&2 2>&3)
 
 # Create temporary directory for downloads
-TEMP_DIR=$(mktemp -d) || exit 1
-cd "$TEMP_DIR" || exit 1
+TEMP_DIR=$(mktemp -d)
+cd "$TEMP_DIR"
 
 # Download DietPi image, verified for the official ones. Writing through -O
 # keeps a retry on the same filename instead of numbered duplicates.
@@ -221,7 +221,7 @@ IMAGE_NAME=${IMAGE_URL##*/}
 while true; do
     echo 'Downloading DietPi image...'
     if ! wget "$IMAGE_URL" -O "$IMAGE_NAME"; then
-        echo 'Error: Failed to download image'
+        echo 'Error: Failed to download image' >&2
         retry_download_prompt || exit 1
         continue
     fi
@@ -229,7 +229,7 @@ while true; do
     if [[ $VERIFY_DOWNLOAD == 'true' ]]; then
         if ! verify_download "$IMAGE_NAME" "$IMAGE_URL"; then
             if ! retry_download_prompt; then
-                echo 'Verification failed and user chose to abort'
+                echo 'Verification failed and user chose to abort' >&2
                 exit 1
             fi
             echo 'Retrying download...'
@@ -244,7 +244,7 @@ done
 
 # Decompress the image
 if ! xz -d "$IMAGE_NAME"; then
-    echo 'Error: Failed to decompress image'
+    echo 'Error: Failed to decompress image' >&2
     exit 1
 fi
 
@@ -263,37 +263,37 @@ for _ in 1 2 3; do
 done
 
 if [[ -z $VM_CREATED ]]; then
-    echo 'Error: Could not create the VM'
+    echo 'Error: Could not create the VM' >&2
     exit 1
 fi
 
 # Import the qcow2 file to the specified storage
 echo 'Importing disk image to storage...'
 if ! qm importdisk "$ID" "$IMAGE_NAME" "$STORAGE"; then
-    echo 'Error: Failed to import disk'
+    echo 'Error: Failed to import disk' >&2
     exit 1
 fi
 
 # Retrieve the disk path
 DISK_PATH=$(qm config "$ID" | awk '/unused0/{print $2;exit}')
 if [[ -z $DISK_PATH ]]; then
-    echo 'Error: Failed to get disk path'
+    echo 'Error: Failed to get disk path' >&2
     exit 1
 fi
 
 echo "Disk path: $DISK_PATH"
 
 # Attach the imported disk
-qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1" || exit 1
+qm set "$ID" --scsi0 "$DISK_PATH,discard=on,ssd=1"
 
 # UEFI images need OVMF and an EFI disk. Keys are pre-enrolled since the
 # DietPi images ship the signed Debian boot chain, so Secure Boot works.
 if [[ $UEFI == 'true' ]]; then
-    qm set "$ID" --machine q35 --bios ovmf --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=1" || exit 1
+    qm set "$ID" --machine q35 --bios ovmf --efidisk0 "$STORAGE:1,efitype=4m,pre-enrolled-keys=1"
 fi
 
 # Boot from the imported disk
-qm set "$ID" --boot order='scsi0' || exit 1
+qm set "$ID" --boot order='scsi0'
 
 # Set description
 DESCRIPTION='
@@ -311,10 +311,11 @@ DESCRIPTION='
 </p>
 '
 
-qm set "$ID" --description "$DESCRIPTION" >/dev/null
-
-# The VM is complete: from here on, the exit trap leaves it alone
+# The VM is complete: from here on, the exit trap leaves it alone. The
+# cosmetic description below may still abort the script, but not cost the VM.
 VM_CREATED=''
+
+qm set "$ID" --description "$DESCRIPTION" >/dev/null
 
 echo "VM $ID Created successfully."
 
