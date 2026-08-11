@@ -252,10 +252,11 @@ IMAGE_NAME=${IMAGE_NAME%.xz}
 
 # Create the VM this late so a cancelled prompt or failed download leaves
 # nothing behind. qm create fails if the ID got taken by a concurrent run
-# in the meantime, so retry with a fresh one.
+# in the meantime, so retry with a fresh one. The explicit CPU model matches
+# the web UI default; plain qm create still hands out kvm64.
 for _ in 1 2 3; do
     ID=$(pvesh get /cluster/nextid)
-    if qm create "$ID" --name 'dietpi' --ostype l26 --cores "$CORES" --memory "$RAM" --scsihw virtio-scsi-pci --net0 'virtio,bridge=vmbr0'; then
+    if qm create "$ID" --name 'dietpi' --ostype l26 --cpu x86-64-v2-AES --cores "$CORES" --memory "$RAM" --scsihw virtio-scsi-pci --net0 'virtio,bridge=vmbr0'; then
         VM_CREATED=$ID
         break
     fi
