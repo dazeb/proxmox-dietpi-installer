@@ -148,28 +148,28 @@ BASE_URL='https://dietpi.com/downloads/images'
 UEFI='false'
 case $OS_VERSION in
     trixie)
-        IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz"
+        IMAGE_URL="$BASE_URL/DietPi_VM-x86_64-Trixie.qcow2"
         ;;
     trixie-uefi)
-        IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Trixie.qcow2.xz"
+        IMAGE_URL="$BASE_URL/DietPi_VM-UEFI-x86_64-Trixie.qcow2"
         UEFI='true'
         ;;
     bookworm)
-        IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Bookworm.qcow2.xz"
+        IMAGE_URL="$BASE_URL/DietPi_VM-x86_64-Bookworm.qcow2"
         ;;
     bookworm-uefi)
-        IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Bookworm.qcow2.xz"
+        IMAGE_URL="$BASE_URL/DietPi_VM-UEFI-x86_64-Bookworm.qcow2"
         UEFI='true'
         ;;
     forky)
-        IMAGE_URL="$BASE_URL/DietPi_Proxmox-x86_64-Forky.qcow2.xz"
+        IMAGE_URL="$BASE_URL/DietPi_VM-x86_64-Forky.qcow2"
         ;;
     forky-uefi)
-        IMAGE_URL="$BASE_URL/DietPi_Proxmox-UEFI-x86_64-Forky.qcow2.xz"
+        IMAGE_URL="$BASE_URL/DietPi_VM-UEFI-x86_64-Forky.qcow2"
         UEFI='true'
         ;;
     custom)
-        IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_Proxmox-x86_64-Trixie.qcow2.xz" --title 'DietPi Installation' 3>&1 1>&2 2>&3)
+        IMAGE_URL=$(whiptail --inputbox 'Enter the URL for the DietPi image:' 8 78 "$BASE_URL/DietPi_VM-x86_64-Trixie.qcow2" --title 'DietPi Installation' 3>&1 1>&2 2>&3)
         ;;
     *)
         echo 'Invalid selection' >&2
@@ -194,9 +194,6 @@ fi
 RAM=$(whiptail --inputbox 'Enter the amount of RAM (in MB) for the new virtual machine (default: 2048):' 8 78 2048 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
 
 CORES=$(whiptail --inputbox 'Enter the number of cores for the new virtual machine (default: 2):' 8 78 2 --title 'DietPi Installation' 3>&1 1>&2 2>&3)
-
-# Install xz-utils if missing
-dpkg-query -s xz-utils &> /dev/null || { echo 'Installing xz-utils for DietPi image decompression'; apt-get update; apt-get -y install xz-utils; }
 
 # Let the user pick a storage that can hold VM images
 STORAGE_OPTIONS=()
@@ -241,14 +238,6 @@ while true; do
     fi
     break
 done
-
-# Decompress the image
-if ! xz -d "$IMAGE_NAME"; then
-    echo 'Error: Failed to decompress image' >&2
-    exit 1
-fi
-
-IMAGE_NAME=${IMAGE_NAME%.xz}
 
 # Create the VM this late so a cancelled prompt or failed download leaves
 # nothing behind. qm create fails if the ID got taken by a concurrent run
