@@ -75,15 +75,15 @@ You can cancel at any prompt — the installer exits cleanly and leaves nothing 
 ## What the Script Does
 
 1. **Prompts** for the DietPi image, RAM, cores and target storage
-2. **Installs `xz-utils`** if it is not already installed
-3. **Downloads the image** to a temporary directory (with a retry prompt if the download fails)
-4. **Verifies the download** — SHA-256 checksum and GPG signature checked against the pinned DietPi signing key (official images only)
-5. **Decompresses the image**
-6. **Creates the VM** — a fresh VMID is picked, and the VM is only created after the image is verified, so an aborted run leaves nothing behind
-7. **Imports the disk** and attaches it as `scsi0` with discard and SSD optimisations
-8. **Configures the VM** — `x86-64-v2-AES` CPU model, RAM, cores and a virtio network device; UEFI images also get the q35 machine type, OVMF and an EFI disk with pre-enrolled Secure Boot keys
-9. **Sets metadata** — VM name and a description linking back to DietPi
-10. **Starts the VM**
+2. **Downloads the image** to a temporary directory (with a retry prompt if the download fails)
+3. **Verifies the download** — SHA-256 checksum and GPG signature checked against the pinned DietPi signing key (official images only)
+4. **Creates the VM** — a fresh VMID is picked, and the VM is only created after the image is verified, so an aborted run leaves nothing behind
+5. **Imports the disk** and attaches it as `scsi0` with discard and SSD optimisations
+6. **Configures the VM** — `x86-64-v2-AES` CPU model, RAM, cores and a virtio network device; UEFI images also get the q35 machine type, OVMF and an EFI disk with pre-enrolled Secure Boot keys
+7. **Sets metadata** — VM name and a description linking back to DietPi
+8. **Starts the VM**
+
+The images are downloaded as ready-to-use `.qcow2` files and imported as-is — no decompression step and no extra packages are needed on the host.
 
 ---
 
